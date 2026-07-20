@@ -30,11 +30,14 @@ plot1 <- FeatureScatter(pbmc, feature1 = "nCount_RNA", feature2 = "percent.mt")
 plot2 <- FeatureScatter(pbmc, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 plot1 + plot2
 
+# Select resonable cells
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+
 # Normalize the data
 pbmc <- NormalizeData(pbmc, normalization.method = "LogNormalize", scale.factor = 10000) # nolint: line_length_linter.
 
 # We can also normalize by this, which is exactly the same as the parametres are default values. 
-pbmc <- NormalizeData
+pbmc <- NormalizeData(pbmc)
 
 
 
