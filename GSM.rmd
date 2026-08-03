@@ -1,55 +1,427 @@
 ---
-title: "GSM_01"
-author: "Ricky S"
+title: "GSM Data Analysis"
+author: "Ricky S."
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    df_print: paged
+    mathjax: "default"
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 16,
+  fig.height = 12,
+  fig.dpi = 300,
+  fig.align = "center"
+)
+```
 
-```{r Load Package}
+[Source code of this page](https://github.com/ricky1129/SciP/blob/main/GSM.rmd)
+
+We are going to explore through the data analysis process of cells' sc-RNA seq. 
+
+Data source: [NCBI Geo](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE277276)
+
+A copy of the resources, but not the GSM data, used in this document can ba found at [this GitHub repo](https://www.github.com/ricky1129/SciP).
+
+# Step 0: Load all packages needed
+
+```{r Load Package,results='hide',cache=TRUE}
 library(dplyr)
 library(Seurat)
 library(patchwork)
+library(org.Hs.eg.db)
+library(AnnotationDbi)
+library(ggplot2)
 ```
 
-```{r Read Data}
-A6.data <- Read10X(data.dir = 'C:/Users/ricky/Code/SciP/GSM/6A', gene.column = 1)
+# Step 0.5: Read back a previous dataset (optional)
+
+```{r Read rds, eval=FALSE,cache=TRUE}
+GSM_named <- readRDS("~/SciP/GSM_named.rds")
+```
+
+# Step 1: Read data and create individual Seurat objects
+
+`data.dir` is the directory to a set of cell data. The directory should be like this: 
+```{text}
+|- 6A/
+| |- barcodes.tsv.gz
+| |- features.tsv.gz
+| |- matrix.mtx.gz
+|- 8A/
+| |- ...
+```
+The following code does a sample to read data. The path need to be changed. 
+```{r Read Data Sample,eval=FALSE,cache=TRUE}
+A6.data <- Read10X(data.dir = '/Path/to/Data/6A', gene.column = 1)
 A6 <- CreateSeuratObject(counts = A6.data, project = "CeliacD", min.cells = 3, min.features = 200)
+```
+
+```{r Read Data 6A,include=FALSE,cache=TRUE}
+A6.data <- Read10X(data.dir = '~/SciP/GSM/6A', gene.column = 1)
+A6 <- CreateSeuratObject(counts = A6.data, project = "CeliacD", min.cells = 3, min.features = 200)
+```
+
+Now that we've read the data, we take a look at it: 
+```{r SeeA6,cache=TRUE}
 A6
 ```
+We can see that 6115 cells are present in this dataset. 
 
-```{r Metadata}
+Using similar methods, we read data from other datasets. 
+
+A total of 10 datasets (5 celiac, 5 control) are loaded for this module. 
+
+```{r Read Data 8A, include=FALSE,cache=TRUE}
+A8.data <- Read10X(data.dir = '~/SciP/GSM/8A', gene.column = 1)
+A8 <- CreateSeuratObject(counts = A8.data, project = "CeliacD", min.cells = 3, min.features = 200)
+```
+```{r Read Data 3A16A21A22A23A36A38A39A, include=FALSE,cache=TRUE}
+A3.data <- Read10X(data.dir = '~/SciP/GSM/3A', gene.column = 1)
+A3 <- CreateSeuratObject(counts = A3.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A16.data <- Read10X(data.dir = '~/SciP/GSM/16A', gene.column = 1)
+A16 <- CreateSeuratObject(counts = A16.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A21.data <- Read10X(data.dir = '~/SciP/GSM/21A', gene.column = 1)
+A21 <- CreateSeuratObject(counts = A21.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A22.data <- Read10X(data.dir = '~/SciP/GSM/22A', gene.column = 1)
+A22 <- CreateSeuratObject(counts = A22.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A23.data <- Read10X(data.dir = '~/SciP/GSM/23A', gene.column = 1)
+A23 <- CreateSeuratObject(counts = A23.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A36.data <- Read10X(data.dir = '~/SciP/GSM/36A', gene.column = 1)
+A36 <- CreateSeuratObject(counts = A36.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A38.data <- Read10X(data.dir = '~/SciP/GSM/38A', gene.column = 1)
+A38 <- CreateSeuratObject(counts = A38.data, project = "CeliacD", min.cells = 3, min.features = 200)
+A39.data <- Read10X(data.dir = '~/SciP/GSM/39A', gene.column = 1)
+A39 <- CreateSeuratObject(counts = A39.data, project = "CeliacD", min.cells = 3, min.features = 200)
+```
+# Step 2: Assign metadata to the Seurat objects
+
+We need `@meta.data` to identify cells from different conditions and sources. 
+
+In this case, we will assign `'control'` and `'celiac'` as `meta.data$condition`; 
+the numeric id will be a good source to identify sources, stored in `meta.data$batch`. 
+
+```{r Metadata 6A,cache=TRUE}
 A6@meta.data$condition <- "control"
 A6@meta.data$batch <- "6A"
 ```
-
-```{r Read Data}
-A8.data <- Read10X(data.dir = 'C:/Users/ricky/Code/SciP/GSM/8A', gene.column = 1)
-A8 <- CreateSeuratObject(counts = A8.data, project = "CeliacD", min.cells = 3, min.features = 200)
-A8
-```
-
-```{r Metadata}
-A8@meta.data$condition <- "coeliac"
+```{r Metadata 8A, include=FALSE,cache=TRUE}
+A8@meta.data$condition <- "celiac"
 A8@meta.data$batch <- "8A"
 ```
 
-```{r Merge}
-Merge_obj <- merge(A6, y=c(A8), add.cell.ids=c("1","2"))
+```{r Metadata 3AA16A21A22A23A36A38A39A, include=FALSE,cache=TRUE}
+A3@meta.data$condition <- "control"
+A3@meta.data$batch <- "3A"
+A16@meta.data$condition <- "control"
+A16@meta.data$batch <- "16A"
+A21@meta.data$condition <- "celiac"
+A21@meta.data$batch <- "21A"
+A22@meta.data$condition <- "celiac"
+A22@meta.data$batch <- "22A"
+A23@meta.data$condition <- "celiac"
+A23@meta.data$batch <- "23A"
+A36@meta.data$condition <- "celiac"
+A36@meta.data$batch <- "36A"
+A38@meta.data$condition <- "control"
+A38@meta.data$batch <- "38A"
+A39@meta.data$condition <- "control"
+A39@meta.data$batch <- "39A"
+```
+
+# Step 3: Merge into a large dataset and then do quality control
+
+We first merge everything we have into a single seurat object. 
+
+```{r Merge,cache=TRUE}
+Merge_obj <- merge(A6, y=c(A8,A3,A16,A21,A22,A23,A36,A38,A39), add.cell.ids=c("1","2","3","4","5","6","7","8","9","10"), project="CeliacD")
 Merge_obj
 ```
 
-```{r Split RNA}
-#It's actually already split
-Merge_obj[['RNA']] <- split(Merge_obj[['RNA']], f = Merge_obj$batch)
-Merge_obj
+Joining the layers together:
+
+```{r Join Layers,cache=TRUE}
+Merge_obj[['RNA']] <- JoinLayers(Merge_obj[['RNA']])
 ```
 
-```{r Filter}
-Merge_obj[["percent.mt"]] <- PercentageFeatureSet(Merge_obj, pattern = "^MT-")
+Now genes are in their ID's, not names. To put their names, we need to match the ID into a database, `org.Hs.eg.db`. 
+
+```{r Convert ID,cache=TRUE}
+ensembl_ids <- rownames(Merge_obj)
+symbols <- mapIds(org.Hs.eg.db, keys = ensembl_ids, column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first") # Map gene names by database
+new_names <- ifelse(is.na(symbols), ensembl_ids, symbols) # Delete N/A in the names
+new_names <- make.unique(new_names) # Seurat don't accept identical names, so we make unique ones
+
+counts <- Merge_obj[['RNA']]$counts
+rownames(counts) <- new_names
+
+GSM_named <- CreateSeuratObject(counts = counts, meta.data = Merge_obj@meta.data)
+```
+
+Now we can filter out dead cells by looking at these 3 factors: 
+mitochondria precentage, feature RNA and count RNA. To find appropriate boundaries, 
+we plot the cells first to see how they distribute. 
+
+```{r Prefilt,cache=TRUE}
+GSM_named[["percent.mt"]] <- PercentageFeatureSet(GSM_named, pattern = "^MT-")
+
+# Argument pt.size = 0 is used to remove the points in the violin plot, which can help to visualize the distribution of the data more clearly.
+VlnPlot(GSM_named, features = c('nFeature_RNA','nCount_RNA','percent.mt'),ncol=3, pt.size = 0)
+```
+
+Apply suitable scales for each factor. This step will delete around 20% of data. 
+
+::: {.callout-note,cache=TRUE}
+
+### Deleted too many? 
+
+Sometimes the quality of datasets are not optimum and some of them contain tons of dead cells. 
+In the data used in this document, one of the datasets are polluted, showing more than $100,000$ cells in `GSM_named`
+before filtering. However, after filtering, $36,983$ cells are left, which is a reasonable number. 
+
+If you are unsure, use the following rules to help you: a good dataset should aim for 5000 samples. 
+Assuming you have $x$ datasets, you should have
+
+$$
+5000 \times x \times (100-20) \div 100 = 4000x
+$$
+
+samples after filtering. 
+
+:::
+
+```{r filt,cache=TRUE}
+GSM_named <- subset(GSM_named, 
+                    subset = nFeature_RNA > 200 
+                    & nFeature_RNA < 5000 
+                    & nCount_RNA < 15000 
+                    & nCount_RNA > 1000 
+                    & percent.mt < 20)
+
+```
 
 
-VlnPlot(Merge_obj, features = c('nFeatureRNA','nCountRNA','percent.mt'),ncol=3)
 
-Merge_obj <- subset(Merge_obj, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+# Step 4: Normalize the data and identify variable features
+
+We first observe the data before normalizing. 
+
+```{r Observe unint,cache=TRUE}
+GSM_named
+```
+
+## 4.1 Log normalization
+
+Use log normalization. Note that `1e4` and `LogNormalize` are both default arguments and thus do not need to appear in the code. 
+
+```{r Normalize,cache=TRUE}
+GSM_named <- NormalizeData(GSM_named, normalization.method = "LogNormalize", scale.factor = 1e4)
+```
+
+## 4.2 Highly variable gene selection
+
+We select highly-variable genes in the data to see which can help us identify different types of cells. 
+
+```{r HVG,results='hide',cache=TRUE}
+GSM_named <- FindVariableFeatures(GSM_named, selection.method = 'vst', nfeatures = 2000)
+
+# Identify the 10 most highly variable genes
+top10 <- head(VariableFeatures(GSM_named), 10)
+
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(GSM_named)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot1 + plot2
+```
+
+## 4.3 PCA
+
+First we scale the data to n(0,1):
+
+```{r Scale,cache=TRUE}
+GSM_named <- ScaleData(GSM_named)
+```
+
+Then we run PCA on this data:
+
+```{r PCA,cache=TRUE}
+GSM_named <- RunPCA(GSM_named, features = VariableFeatures(object = GSM_named))
+```
+
+We can use elbow plot to view the results:
+
+```{r ELBP,cache=TRUE}
+ElbowPlot(GSM_named, ndims = 100)
+```
+
+The turning point help us determine the arg `dims` for Clustering. 
+
+
+## 4.4 UMAP/Clustering
+
+Clustering:
+
+```{r cluster,cache=TRUE}
+GSM_named <- FindNeighbors(GSM_named, dims = 1:30)
+GSM_named <- FindClusters(GSM_named, resolution = 0.5)
+
+# Look at cluster IDs of the first 5 cells
+head(Idents(GSM_named), 5)
+```
+
+UMAP:
+
+```{r umap,cache=TRUE}
+GSM_named <- RunUMAP(GSM_named, dims = 1:30)
+```
+Now we use `DimPlot` to see the results:
+
+```{r DimPlot,cache=TRUE}
+# DimPlot(GSM_named, reduction = 'umap', label = TRUE)
+DimPlot(GSM_named, reduction = 'umap', group.by = 'batch', label = TRUE)
+```
+
+# Step 5: Data integration
+
+We need to split the data into batches before we start integration. 
+
+```{r Split,cache=TRUE}
+GSM_named[["RNA"]] <- split(GSM_named[["RNA"]], f = GSM_named@meta.data$batch)
+GSM_named
+```
+
+This data need to be scaled again before we can do PCA on it. 
+
+```{r Scb4pca,cache=TRUE}
+GSM_named <- ScaleData(GSM_named) # This time we did not fill the arguments
+GSM_named <- RunPCA(GSM_named, features = VariableFeatures(object = GSM_named))
+```
+
+## CCA Integration
+
+```{r CCA,cache=TRUE}
+# CCA
+GSM_named <- IntegrateLayers(
+  object = GSM_named, method = CCAIntegration,
+  orig.reduction = "pca", new.reduction = 'integrated.cca',
+  verbose = FALSE)
+
+# re-join layers after integration
+GSM_named[["RNA"]] <- JoinLayers(GSM_named[["RNA"]])
+
+GSM_named <- FindNeighbors(GSM_named, reduction = "integrated.cca", dims = 1:30)
+GSM_named <- FindClusters(GSM_named, resolution = 1)
+GSM_named <- RunUMAP(GSM_named,dims = 1:30,reduction = 'integrated.cca')
+
+DimPlot(GSM_named, reduction = 'umap', label = TRUE)
+DimPlot(GSM_named, reduction = 'umap', group.by = 'batch', label = TRUE)
+```
+
+
+# Step 6: Annotation
+
+We now try to match different clusters to its cell types. 
+Some of the typically expressed genes are listed below: 
+
+- Epithelium (EPCAM)
+- Immune (PTPRC)
+- Stroma (DCN, VIM, PECAM1)
+
+- Enterocyte (FABP2, FABP6), 
+- Goblet (MUC2), 
+- Paneth (DEFA5, DEFA6), 
+- TA cell (MKI67, TOP2A), 
+- Stem(LGR5, OLFM4, ASCL2). 
+- Immune: 
+- + T(CD3E), 
+- + B(MS4A1), 
+- + Plasma (JCHAIN), 
+- + Myeloid(AIF1), 
+- + Fibroblast (DCN, VIM), 
+- + Endothelial (PECAM1)
+
+First we plot the dotplot to see which clusters express which genes.
+
+```{r idkaaa,cache=TRUE}
+all_markers <- list(
+  "Lineage" = c("EPCAM", "PTPRC", "DCN", "VIM", "PECAM1"),
+  "Epithelial" = c(
+    "FABP2", "FABP6",
+    "MUC2",
+    "DEFA5", "DEFA6",
+    "MKI67", "TOP2A",
+    "LGR5", "OLFM4", "ASCL2"
+  ),
+  "Immune" = c(
+    "CD3E",
+    "MS4A1",
+    "JCHAIN",
+    "AIF1"
+  )
+)
+
+DotPlot(
+  GSM_named,
+  features = all_markers,
+  cluster.idents = FALSE
+) 
+```
+
+Read the image and analyse with brain (or just go ask chatgpt), we can then label the clusters. 
+
+```{r label,cache=TRUE}
+identity <- c(
+  "Plasma Cell",              # 0
+  "T Cell",                   # 1
+  "T Cell",                   # 2
+  "Plasma Cell",              # 3
+  "T Cell",                   # 4
+  "Enterocyte",               # 5
+  "T Cell",                   # 6
+  "T Cell",                   # 7
+  "Endothelial Cell",         # 8
+  "Enterocyte / Plasma Cell", # 9
+  "T Cell",                   # 10
+  "Endothelial Cell",         # 11
+  "Intestinal Stem Cell",     # 12
+  "Myeloid Cell",             # 13
+  "Plasma Cell / Stromal",    # 14
+  "Epithelial Cell",          # 15
+  "Fibroblast",               # 16
+  "Fibroblast",               # 17
+  "B Cell",                   # 18
+  "Cycling T Cell",           # 19
+  "Endothelial Cell",         # 20
+  "Epithelial Cell",          # 21
+  "Mesenchymal / Stromal",    # 22
+  "Fibroblast",               # 23
+  "Fibroblast",               # 24
+  "Fibroblast",               # 25
+  "Endothelial Cell",         # 26
+  "Immune (Unassigned)"       # 27
+)
+names(identity) <- levels(GSM_named)
+GSM_named <- RenameIdents(GSM_named, identity)
+```
+
+We can now save the dotplot (with labels) into a file. 
+```{r savePlot, results='hide',cache=TRUE}
+d <- DotPlot(GSM_named, features = all_markers, cluster.idents = FALSE) 
+ggsave("~/SciP/GSM_dotplot.png", d, width = 16, height = 12, dpi = 300, bg = "white")
+```
+
+# Step the-very-last: Save the dataset
+```{r save,cache=TRUE}
+saveRDS(GSM_named, file = "~/SciP/GSM_named.rds")
 ```
