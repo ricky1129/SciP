@@ -7,5 +7,6 @@ filtered_gene_bc_matrices/
 barcodes.tsv
 genes.tsv
 matrix.mtx
-*.csv
+rna_expression_two_lesson_project.csv
+rna_groupby_correlation_example.csv
 T01.R
