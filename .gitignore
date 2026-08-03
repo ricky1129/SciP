@@ -1,3 +1,11 @@
 ifnb.SeuratData/
 GSM/
 .vscode/
+content/
+filtered_gene_bc_matrices/
+.Rhistory
+barcodes.tsv
+genes.tsv
+matrix.mtx
+*.csv
+T01.R
