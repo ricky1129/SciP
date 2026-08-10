@@ -12,3 +12,9 @@ rna_groupby_correlation_example.csv
 T01.R
 GSM_cache/
 GSM_named.rds
+cnmf_out/mycNMF/cnmf_tmp
+GSM_exclDb.rds
+cNMF.rtf
+Report.docx
+Report.md
+Report.pdf
