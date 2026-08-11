@@ -54,7 +54,7 @@ GSM_named <- readRDS("~/SciP/GSM_named.rds")
 # Step 1: Read data and create individual Seurat objects
 
 `data.dir` is the directory to a set of cell data. The directory should be like this: 
-```{text}
+```text
 |- 6A/
 | |- barcodes.tsv.gz
 | |- features.tsv.gz
@@ -424,4 +424,38 @@ ggsave("~/SciP/GSM_dotplot.png", d, width = 16, height = 12, dpi = 300, bg = "wh
 # Step the-very-last: Save the dataset
 ```{r save,cache=TRUE}
 saveRDS(GSM_named, file = "~/SciP/GSM_named.rds")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+GSM_exclDb <- readRDS("~/SciP/GSM_exclDb.rds")
+
+```
+
+# Section 3 
+```{r}
+usage <- read.csv("~/SciP/cnmf_out/usage_GEP.csv", row.names = 1)
+usage <- usage[colnames(GSM_exclDb), ] # align to cell order
+GSM_exclDb <- AddMetaData(GSM_exclDb, usage) # GEP1, GEP2, ... as metadata
+# colour each program on the UMAP
+FeaturePlot(GSM_exclDb, features = c("GEP1","GEP2","GEP3","GEP14","GEP16","GEP18"), reduction = "umap")
+ggsave("~/SciP/cnmf_18.png", width = 16, height = 12, dpi = 300, bg = "white")
+# (optional) store usages as a reduction for downstream tools
+GSM_exclDb[["cnmf"]] <- CreateDimReducObject(embeddings = as.matrix(usage),
+key = "GEP_", assay = "RNA")
 ```
