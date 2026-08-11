@@ -13,6 +13,7 @@ T01.R
 GSM_cache/
 GSM_named.rds
 cnmf_out/mycNMF/cnmf_tmp
+cnmf_out/cnmf02/cnmf_tmp
 GSM_exclDb.rds
 cNMF.rtf
 Report.docx
